@@ -1,9 +1,12 @@
 """
 AuthSentinel - Main FastAPI Application
 Provides RESTful APIs for authentication, risk analysis, alert streaming, and attack simulations.
+Supports local execution, Docker, and Vercel Serverless deployments.
 """
 
+import os
 import json
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
@@ -21,6 +24,10 @@ from app.models.alert import SecurityAlert
 from app.core.engine import DetectionEngine
 from app.core.baseline import update_user_baseline_after_verified_login
 from app.core.geo import resolve_ip_location
+
+# Base path resolution for static assets (ensures serverless & Vercel compatibility)
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
 # ----------------- Pydantic Request/Response Schemas -----------------
 
@@ -163,15 +170,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Mount static files safely with absolute path
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # ----------------- UI / Root Endpoint -----------------
 
 @app.get("/")
 def serve_ui():
     """Serves the interactive Cyber Threat Intelligence Dashboard."""
-    return FileResponse("app/static/index.html")
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return {"message": "AuthSentinel API Active", "docs": "/docs"}
 
 # ----------------- API Endpoints -----------------
 
@@ -190,10 +201,7 @@ def process_login(payload: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is locked due to high-risk security triggers. Contact SOC Admin."
         )
 
-    # Simplified credential check for demonstration (standard mock pass: 'SecurePassword123!')
     is_password_valid = (payload.password == "SecurePassword123!")
-
-    # Set fingerprint fallback if missing
     fingerprint = payload.device_fingerprint or f"fp_{abs(hash(payload.user_agent)) % 1000000}"
 
     engine = DetectionEngine(db)
@@ -267,7 +275,6 @@ def process_login(payload: LoginRequest, db: Session = Depends(get_db)):
         if analysis["action"] == "BLOCK_AND_LOCK":
             user.is_locked = True
         elif analysis["action"] == "ALLOW" and is_password_valid:
-            # Update user's baseline state
             update_user_baseline_after_verified_login(
                 baseline=user.baseline,
                 login_time=payload.timestamp or datetime.now(timezone.utc),
@@ -351,19 +358,16 @@ def get_analytics(db: Session = Depends(get_db)):
     blocked_logins = db.query(LoginLog).filter(LoginLog.action_taken == "BLOCK_AND_LOCK").count()
     total_alerts = db.query(SecurityAlert).count()
 
-    # Alert severity counts
     critical_alerts = db.query(SecurityAlert).filter(SecurityAlert.severity == "CRITICAL").count()
     high_alerts = db.query(SecurityAlert).filter(SecurityAlert.severity == "HIGH").count()
     medium_alerts = db.query(SecurityAlert).filter(SecurityAlert.severity == "MEDIUM").count()
     low_alerts = db.query(SecurityAlert).filter(SecurityAlert.severity == "LOW").count()
 
-    # Rule trigger counts
     impossible_travel_count = db.query(SecurityAlert).filter(SecurityAlert.alert_type == "RULE_IMPOSSIBLE_TRAVEL").count()
     brute_force_count = db.query(SecurityAlert).filter(SecurityAlert.alert_type.in_(["RULE_BRUTE_FORCE_BURST", "RULE_BRUTE_FORCE_CRITICAL"])).count()
     new_device_count = db.query(SecurityAlert).filter(SecurityAlert.alert_type == "RULE_NEW_DEVICE").count()
     high_risk_ip_count = db.query(SecurityAlert).filter(SecurityAlert.alert_type == "RULE_HIGH_RISK_IP").count()
 
-    # Extract impossible travel arcs for the world map
     travel_alerts = (
         db.query(SecurityAlert)
         .filter(SecurityAlert.alert_type == "RULE_IMPOSSIBLE_TRAVEL")
@@ -421,7 +425,6 @@ def trigger_scenario(payload: ScenarioSimulationRequest, db: Session = Depends(g
     if not user:
         raise HTTPException(status_code=404, detail=f"Target user '{target}' not found.")
 
-    # Reset user lock status for simulation convenience
     user.is_locked = False
     db.commit()
 
@@ -429,7 +432,6 @@ def trigger_scenario(payload: ScenarioSimulationRequest, db: Session = Depends(g
     now = datetime.now(timezone.utc)
 
     if payload.scenario == "impossible_travel":
-        # Scenario: India (10:00 AM) -> USA (10:05 AM)
         t1 = now - timedelta(minutes=5)
         req1 = LoginRequest(
             username=target,
@@ -442,7 +444,6 @@ def trigger_scenario(payload: ScenarioSimulationRequest, db: Session = Depends(g
         res1 = process_login(req1, db)
         results.append({"step": 1, "description": "Normal Login in New Delhi, India (10:00 AM)", "result": res1})
 
-        # Step 2: Sudden login from New York, USA 5 minutes later
         t2 = now
         req2 = LoginRequest(
             username=target,
@@ -486,7 +487,7 @@ def trigger_scenario(payload: ScenarioSimulationRequest, db: Session = Depends(g
         req = LoginRequest(
             username=target,
             password="SecurePassword123!",
-            ip_address="103.24.150.10", # Bengaluru
+            ip_address="103.24.150.10",
             user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
             device_fingerprint="fp_novel_iphone15",
             timestamp=midnight_time

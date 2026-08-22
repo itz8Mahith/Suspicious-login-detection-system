@@ -1,12 +1,25 @@
 """
 AuthSentinel - Database Configuration and Session Management
-Uses SQLite with SQLAlchemy for zero-configuration, reliable persistence.
+Uses SQLite with SQLAlchemy. Automatically supports local directories and cloud serverless (/tmp on Vercel).
 """
 
+import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./data/sentinel.db"
+# Detect Vercel / serverless read-only container environments
+if os.environ.get("VERCEL") or not os.access(".", os.W_OK):
+    DB_DIR = Path("/tmp")
+else:
+    DB_DIR = Path("./data")
+    try:
+        DB_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        DB_DIR = Path("/tmp")
+
+DB_PATH = DB_DIR / "sentinel.db"
+DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 
 engine = create_engine(
     DATABASE_URL,
