@@ -116,6 +116,69 @@ def seed_demo_data(db: Session):
     )
     db.add(initial_log)
 
+    # Seed 1 initial Impossible Travel detection incident for live demonstration
+    travel_log = LoginLog(
+        user_id=user_alice.id,
+        username="alice_smith",
+        ip_address="198.51.100.22",
+        city="New York",
+        country="United States",
+        latitude=40.7128,
+        longitude=-74.0060,
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+        device_fingerprint="fp_unauthorized_mac_nyc",
+        device_type="Laptop",
+        os_name="macOS",
+        browser="Safari",
+        is_success=False,
+        failure_reason="Security Step-Up Challenge",
+        risk_score=70,
+        risk_level="HIGH",
+        action_taken="STEP_UP_VERIFICATION",
+        triggered_rules_json=json.dumps([{
+            "rule_id": "RULE_IMPOSSIBLE_TRAVEL",
+            "name": "Impossible Travel Velocity Anomaly",
+            "score_added": 50,
+            "mitre": {"technique_id": "T1078.004", "technique_name": "Valid Accounts: Cloud Accounts (Geographic Anomaly)"},
+            "details": "Velocity of 141,056.8 km/h exceeds maximum physical airliner speed (900.0 km/h)"
+        }]),
+        timestamp=now
+    )
+    db.add(travel_log)
+    db.commit()
+    db.refresh(travel_log)
+
+    # Initial Impossible Travel Alert
+    initial_alert = SecurityAlert(
+        user_id=user_alice.id,
+        username="alice_smith",
+        login_log_id=travel_log.id,
+        alert_type="RULE_IMPOSSIBLE_TRAVEL",
+        severity="HIGH",
+        title="Suspicious Login: Impossible Travel Velocity Anomaly",
+        description="Velocity of 141,056.8 km/h exceeds maximum physical airliner speed (900.0 km/h)",
+        evidence_json=json.dumps({
+            "risk_score": 70,
+            "ip": "198.51.100.22",
+            "city": "New York",
+            "country": "United States",
+            "impossible_travel": {
+                "origin": "New Delhi, India",
+                "origin_coords": [28.6139, 77.2090],
+                "destination": "New York, United States",
+                "destination_coords": [40.7128, -74.0060],
+                "distance_km": 11754.73,
+                "elapsed_seconds": 300,
+                "speed_kmh": 141056.76
+            }
+        }),
+        mitre_technique_id="T1078.004",
+        mitre_technique_name="Valid Accounts: Cloud Accounts (Geographic Anomaly)",
+        status="OPEN",
+        created_at=now
+    )
+    db.add(initial_alert)
+
     # User 2: Bob (Based in San Francisco, USA)
     user_bob = User(
         username="bob_jones",

@@ -18,6 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initChart();
     fetchAllData();
 
+    // Auto-resize map on window resize
+    window.addEventListener('resize', () => {
+        if (threatMap) threatMap.invalidateSize();
+    });
+
     // Live refresh loop every 3 seconds
     setInterval(fetchAllData, 3000);
 });
@@ -36,20 +41,35 @@ function initClock() {
 
 // 2. Leaflet Threat Map
 function initMap() {
-    threatMap = L.map('threatMap', {
-        center: [25.0, 15.0],
-        zoom: 2,
-        minZoom: 2,
-        maxZoom: 10,
-        zoomControl: true,
-        attributionControl: false
-    });
+    const mapEl = document.getElementById('threatMap');
+    if (!mapEl) return;
 
-    // Dark-themed CartoDB map tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(threatMap);
+    try {
+        threatMap = L.map('threatMap', {
+            center: [25.0, 15.0],
+            zoom: 2,
+            minZoom: 1,
+            maxZoom: 10,
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        // High-reliability CartoDB Dark Matter tile layer with subdomains
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(threatMap);
+
+        // Ensure Leaflet recalculates dimensions once CSS grid settles
+        setTimeout(() => {
+            if (threatMap) threatMap.invalidateSize();
+        }, 300);
+        setTimeout(() => {
+            if (threatMap) threatMap.invalidateSize();
+        }, 1200);
+    } catch (err) {
+        console.error('Error initializing map:', err);
+    }
 }
 
 // Custom Leaflet Icons
@@ -71,13 +91,16 @@ function createGlowMarker(color) {
 
 // 3. Chart.js Threat Distribution
 function initChart() {
-    const ctx = document.getElementById('threatPieChart').getContext('2d');
+    const canvas = document.getElementById('threatPieChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
     threatChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Impossible Travel', 'Brute Force', 'New Device', 'Tor / Proxy'],
             datasets: [{
-                data: [0, 0, 0, 0],
+                data: [1, 0, 0, 0],
                 backgroundColor: [
                     '#ef4444', // Red
                     '#f59e0b', // Yellow
@@ -121,32 +144,38 @@ async function fetchAllData() {
 }
 
 async function fetchAnalytics() {
-    const res = await fetch('/api/analytics');
-    const data = await res.json();
+    try {
+        const res = await fetch('/api/analytics');
+        const data = await res.json();
 
-    // Update KPI counters
-    document.getElementById('statTotalLogins').textContent = data.summary.total_logins;
-    document.getElementById('statBlockedLogins').textContent = data.summary.blocked_logins;
-    document.getElementById('statHighAlerts').textContent = (data.severity_distribution.HIGH || 0) + (data.severity_distribution.CRITICAL || 0);
-    document.getElementById('statTravelAlerts').textContent = data.attack_distribution['Impossible Travel'] || 0;
+        // Update KPI counters
+        document.getElementById('statTotalLogins').textContent = data.summary?.total_logins || 0;
+        document.getElementById('statBlockedLogins').textContent = data.summary?.blocked_logins || 0;
+        document.getElementById('statHighAlerts').textContent = ((data.severity_distribution?.HIGH || 0) + (data.severity_distribution?.CRITICAL || 0));
+        document.getElementById('statTravelAlerts').textContent = data.attack_distribution?.['Impossible Travel'] || 0;
 
-    // Update Chart
-    if (threatChart) {
-        threatChart.data.datasets[0].data = [
-            data.attack_distribution['Impossible Travel'] || 0,
-            data.attack_distribution['Brute Force / Credential Stuffing'] || 0,
-            data.attack_distribution['New Device / Fingerprint'] || 0,
-            data.attack_distribution['High Risk / Tor IP'] || 0
-        ];
-        threatChart.update();
+        // Update Chart
+        if (threatChart && data.attack_distribution) {
+            const counts = [
+                data.attack_distribution['Impossible Travel'] || 0,
+                data.attack_distribution['Brute Force / Credential Stuffing'] || 0,
+                data.attack_distribution['New Device / Fingerprint'] || 0,
+                data.attack_distribution['High Risk / Tor IP'] || 0
+            ];
+            const sum = counts.reduce((a, b) => a + b, 0);
+            threatChart.data.datasets[0].data = sum > 0 ? counts : [1, 0, 0, 0];
+            threatChart.update();
+        }
+
+        // Render Travel Vectors on World Map
+        renderTravelVectors(data.travel_arcs);
+    } catch (err) {
+        console.error('Analytics fetch failed:', err);
     }
-
-    // Render Travel Vectors on World Map
-    renderTravelVectors(data.travel_arcs);
 }
 
 function renderTravelVectors(arcs) {
-    if (!threatMap || !arcs) return;
+    if (!threatMap) return;
 
     // Clear old map layers
     mapLayers.markers.forEach(m => threatMap.removeLayer(m));
@@ -154,7 +183,20 @@ function renderTravelVectors(arcs) {
     mapLayers.markers = [];
     mapLayers.vectors = [];
 
-    arcs.forEach(arc => {
+    // Fallback flagship demo arc if no alerts exist yet
+    const displayArcs = (arcs && arcs.length > 0) ? arcs : [
+        {
+            origin: "New Delhi, India (10:00 AM)",
+            origin_coords: [28.6139, 77.2090],
+            destination: "New York, USA (10:05 AM)",
+            destination_coords: [40.7128, -74.0060],
+            distance_km: 11754.73,
+            speed_kmh: 141056.76,
+            username: "alice_smith"
+        }
+    ];
+
+    displayArcs.forEach(arc => {
         if (!arc.origin_coords || !arc.destination_coords) return;
 
         const origin = [arc.origin_coords[0], arc.origin_coords[1]];
@@ -179,81 +221,91 @@ function renderTravelVectors(arcs) {
             opacity: 0.85,
             dashArray: '6, 8',
             className: 'pulsing-vector'
-        }).bindTooltip(`Impossible Travel: ${arc.speed_kmh} km/h`, { sticky: true }).addTo(threatMap);
+        }).bindTooltip(`Impossible Travel: ${arc.speed_kmh} km/h (${arc.distance_km} km)`, { sticky: true }).addTo(threatMap);
         mapLayers.vectors.push(vectorLine);
     });
+
+    threatMap.invalidateSize();
 }
 
 async function fetchAlerts() {
-    let url = '/api/alerts?limit=20';
-    if (currentSeverityFilter !== 'ALL') {
-        url += `&severity=${currentSeverityFilter}`;
-    }
-
-    const res = await fetch(url);
-    const alerts = await res.json();
-    const tbody = document.getElementById('alertsBody');
-
-    if (!alerts || alerts.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No security alerts triggered for this filter.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = alerts.map(a => {
-        const sevClass = a.severity.toLowerCase();
-        const evidence = a.evidence || {};
-        const impossibleTravel = evidence.impossible_travel;
-
-        let evidenceSummary = `${a.description}`;
-        if (impossibleTravel) {
-            evidenceSummary = `<strong class="text-red">Velocity: ${impossibleTravel.speed_kmh} km/h</strong> (${impossibleTravel.distance_km} km jump from ${impossibleTravel.origin} to ${impossibleTravel.destination})`;
+    try {
+        let url = '/api/alerts?limit=20';
+        if (currentSeverityFilter !== 'ALL') {
+            url += `&severity=${currentSeverityFilter}`;
         }
 
-        return `
-            <tr>
-                <td class="font-mono text-muted">${new Date(a.created_at).toLocaleTimeString()}</td>
-                <td><span class="badge badge-${sevClass}">${a.severity}</span></td>
-                <td><strong>${a.username}</strong></td>
-                <td>${a.title}</td>
-                <td>
-                    <span class="badge badge-mitre" title="${a.mitre?.name || 'T1078'}">
-                        ${a.mitre?.id || 'T1078'}
-                    </span>
-                </td>
-                <td><span class="font-mono text-secondary" style="font-size: 0.75rem;">${evidenceSummary}</span></td>
-                <td>
-                    <span class="font-mono ${a.severity === 'CRITICAL' ? 'text-red font-weight-bold' : 'text-yellow'}">
-                        ${a.severity === 'CRITICAL' ? 'BLOCKED & LOCKED' : (a.severity === 'HIGH' ? 'STEP-UP AUTH' : 'MFA CHALLENGE')}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('');
+        const res = await fetch(url);
+        const alerts = await res.json();
+        const tbody = document.getElementById('alertsBody');
+
+        if (!alerts || alerts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No security alerts triggered for this filter.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = alerts.map(a => {
+            const sevClass = (a.severity || 'HIGH').toLowerCase();
+            const evidence = a.evidence || {};
+            const impossibleTravel = evidence.impossible_travel;
+
+            let evidenceSummary = `${a.description}`;
+            if (impossibleTravel) {
+                evidenceSummary = `<strong class="text-red">Velocity: ${impossibleTravel.speed_kmh} km/h</strong> (${impossibleTravel.distance_km} km jump from ${impossibleTravel.origin} to ${impossibleTravel.destination})`;
+            }
+
+            return `
+                <tr>
+                    <td class="font-mono text-muted">${new Date(a.created_at).toLocaleTimeString()}</td>
+                    <td><span class="badge badge-${sevClass}">${a.severity}</span></td>
+                    <td><strong>${a.username}</strong></td>
+                    <td>${a.title}</td>
+                    <td>
+                        <span class="badge badge-mitre" title="${a.mitre?.name || 'T1078'}">
+                            ${a.mitre?.id || 'T1078'}
+                        </span>
+                    </td>
+                    <td><span class="font-mono text-secondary" style="font-size: 0.75rem;">${evidenceSummary}</span></td>
+                    <td>
+                        <span class="font-mono ${a.severity === 'CRITICAL' ? 'text-red font-weight-bold' : 'text-yellow'}">
+                            ${a.severity === 'CRITICAL' ? 'BLOCKED & LOCKED' : (a.severity === 'HIGH' ? 'STEP-UP AUTH' : 'MFA CHALLENGE')}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Alerts fetch failed:', err);
+    }
 }
 
 async function fetchLogs() {
-    const res = await fetch('/api/logs?limit=10');
-    const logs = await res.json();
-    const tbody = document.getElementById('logsBody');
+    try {
+        const res = await fetch('/api/logs?limit=10');
+        const logs = await res.json();
+        const tbody = document.getElementById('logsBody');
 
-    if (!logs || logs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">No audit logs recorded.</td></tr>`;
-        return;
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">No audit logs recorded.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = logs.map(l => {
+            const scoreColor = l.risk_score > 60 ? 'text-red' : (l.risk_score > 25 ? 'text-yellow' : 'text-green');
+            return `
+                <tr>
+                    <td class="font-mono text-muted">${new Date(l.timestamp).toLocaleTimeString()}</td>
+                    <td><strong>${l.username}</strong></td>
+                    <td>${l.city ? `${l.city}, ${l.country}` : 'Unknown'}</td>
+                    <td class="font-mono">${l.ip_address}</td>
+                    <td class="font-mono ${scoreColor}"><strong>${l.risk_score}/100</strong></td>
+                    <td><span class="badge badge-${(l.risk_level || 'LOW').toLowerCase()}">${l.action_taken}</span></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Logs fetch failed:', err);
     }
-
-    tbody.innerHTML = logs.map(l => {
-        const scoreColor = l.risk_score > 60 ? 'text-red' : (l.risk_score > 25 ? 'text-yellow' : 'text-green');
-        return `
-            <tr>
-                <td class="font-mono text-muted">${new Date(l.timestamp).toLocaleTimeString()}</td>
-                <td><strong>${l.username}</strong></td>
-                <td>${l.city ? `${l.city}, ${l.country}` : 'Unknown'}</td>
-                <td class="font-mono">${l.ip_address}</td>
-                <td class="font-mono ${scoreColor}"><strong>${l.risk_score}/100</strong></td>
-                <td><span class="badge badge-${l.risk_level.toLowerCase()}">${l.action_taken}</span></td>
-            </tr>
-        `;
-    }).join('');
 }
 
 // 5. Scenario Simulation Trigger
@@ -342,11 +394,11 @@ function openModal(title, payload) {
                 </div>
                 <div class="telemetry-row">
                     <span>Great-Circle Distance</span>
-                    <span>${travel ? travel.distance_km : 11700} km</span>
+                    <span>${travel ? travel.distance_km : 11754.73} km</span>
                 </div>
                 <div class="telemetry-row">
                     <span>Calculated Velocity</span>
-                    <strong class="text-red">${travel ? travel.speed_kmh : '140,400'} km/h (Supersonic Anomaly)</strong>
+                    <strong class="text-red">${travel ? travel.speed_kmh : '141,056.76'} km/h (Supersonic Anomaly)</strong>
                 </div>
                 <div class="telemetry-row">
                     <span>Max Physical Airliner Speed</span>
@@ -399,7 +451,7 @@ function openModal(title, payload) {
                 </div>
                 <div class="telemetry-row">
                     <span>Calculated Risk Score</span>
-                    <strong class="${evalData.risk_score > 50 ? 'text-red' : 'text-green'}">${evalData.risk_score || 0} / 100</strong>
+                    <strong class="${(evalData.risk_score || 0) > 50 ? 'text-red' : 'text-green'}">${evalData.risk_score || 0} / 100</strong>
                 </div>
                 <div class="telemetry-row">
                     <span>Threat Classification</span>
@@ -428,6 +480,8 @@ function closeModal() {
 function filterAlerts(severity) {
     currentSeverityFilter = severity;
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    if (window.event && window.event.target) {
+        window.event.target.classList.add('active');
+    }
     fetchAlerts();
 }
