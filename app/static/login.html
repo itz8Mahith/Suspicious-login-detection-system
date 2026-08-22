@@ -88,6 +88,7 @@
         .input-group label {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-size: 0.78rem;
             font-weight: 600;
             color: var(--text-secondary);
@@ -184,6 +185,20 @@
             border-color: var(--accent-cyan);
             background: #25334e;
         }
+        .btn-unlock-small {
+            background: transparent;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.45rem;
+            cursor: pointer;
+            font-family: var(--font-mono);
+        }
+        .btn-unlock-small:hover {
+            background: var(--accent-cyan);
+            color: #000;
+        }
         .footer-note {
             text-align: center;
             font-size: 0.75rem;
@@ -235,7 +250,9 @@
                 <div class="input-group">
                     <label>
                         <span>Username / Identity</span>
-                        <span class="text-cyan">Select or Type</span>
+                        <button type="button" class="btn-unlock-small" onclick="quickUnlockUser()" title="Unlock / reset user if locked">
+                            <i class="fa-solid fa-lock-open"></i> Unlock User
+                        </button>
                     </label>
                     <select id="loginUsername" class="input-control" onchange="syncUserPreset(this.value)">
                         <option value="alice_smith">alice_smith (Primary Base: New Delhi, India)</option>
@@ -297,7 +314,10 @@
                 <div id="bannerDetails" class="alert-detail-row">
                     <!-- Injected telemetry details -->
                 </div>
-                <div style="margin-top: 0.75rem; text-align: right;">
+                <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" class="btn-unlock-small" onclick="quickUnlockUser()">
+                        <i class="fa-solid fa-rotate-left"></i> Unlock & Reset State
+                    </button>
                     <a href="/" class="nav-link-btn" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">
                         View Threat Incident on SOC Map &rarr;
                     </a>
@@ -320,7 +340,20 @@
                 devSelect.value = 'fp_unauthorized_mac_nyc';
             } else {
                 locSelect.value = '198.51.100.99';
-                devSelect.value = 'fp_alice_workstation_dell';
+                devSelect.value = 'fp_bob_macbook_pro';
+            }
+        }
+
+        async function quickUnlockUser() {
+            const username = document.getElementById('loginUsername').value;
+            try {
+                const res = await fetch(`/api/users/${username}/unlock`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || `User '${username}' unlocked!`);
+                const banner = document.getElementById('loginResultBanner');
+                banner.style.display = 'none';
+            } catch (err) {
+                alert('Unlock request failed: ' + err.message);
             }
         }
 
@@ -355,19 +388,28 @@
                 });
 
                 const data = await res.json();
-                const evalData = data.evaluation;
                 banner.style.display = 'block';
+
+                if (!res.ok) {
+                    banner.className = 'login-alert-banner alert-danger-box';
+                    header.innerHTML = `<i class="fa-solid fa-lock"></i> 🚨 ACCOUNT QUARANTINED (403)`;
+                    content.innerHTML = `<strong>${data.detail || "Account is locked due to high-risk security triggers."}</strong>`;
+                    details.innerHTML = `Action: <strong>BLOCK & LOCK</strong> | Click <em>"Unlock & Reset State"</em> below to release the account.`;
+                    return;
+                }
+
+                const evalData = data.evaluation || {};
 
                 if (evalData.risk_score < 30 && evalData.action === 'ALLOW') {
                     banner.className = 'login-alert-banner alert-success-box';
                     header.innerHTML = `<i class="fa-solid fa-circle-check"></i> Authentication Granted (Low Risk)`;
                     content.innerHTML = `Welcome, <strong>${evalData.username}</strong>. Your login aligns with your verified behavioral baseline.`;
-                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100</strong> | Location: ${evalData.geolocation.city}, ${evalData.geolocation.country} | Action: ALLOW`;
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100</strong> | Location: ${evalData.geolocation?.city || 'Local'}, ${evalData.geolocation?.country || 'India'} | Action: ALLOW`;
                 } else if (evalData.action === 'BLOCK_AND_LOCK') {
                     banner.className = 'login-alert-banner alert-danger-box';
                     header.innerHTML = `<i class="fa-solid fa-ban"></i> 🚨 ACCESS BLOCKED & ACCOUNT LOCKED`;
                     content.innerHTML = `Critical threat indicators detected. The session has been terminated and the account is quarantined.`;
-                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [CRITICAL]</strong> | Rules Triggered: ${evalData.triggered_rules.map(r => r.name).join(', ')}`;
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [CRITICAL]</strong> | Rules Triggered: ${(evalData.triggered_rules || []).map(r => r.name).join(', ')}`;
                 } else {
                     banner.className = 'login-alert-banner alert-warning-box';
                     const travel = evalData.impossible_travel_telemetry;
@@ -379,7 +421,7 @@
                         content.innerHTML = `Suspicious login pattern detected. Secondary Multi-Factor Authentication (MFA) required.`;
                     }
                     
-                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [${evalData.risk_level}]</strong> | MITRE ATT&CK: ${evalData.triggered_rules[0]?.mitre?.technique_id || 'T1078'} | Action: ${evalData.action}`;
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [${evalData.risk_level || 'MEDIUM'}]</strong> | MITRE ATT&CK: ${evalData.triggered_rules?.[0]?.mitre?.technique_id || 'T1078'} | Action: ${evalData.action}`;
                 }
 
             } catch (err) {

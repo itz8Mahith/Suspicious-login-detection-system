@@ -223,11 +223,11 @@ def process_login(payload: LoginRequest, db: Session = Depends(get_db)):
     """
     user = db.query(User).filter(User.username == payload.username).first()
     
-    # Check if account is already locked
+    # Check if account is locked
     if user and user.is_locked:
         raise HTTPException(
             status_code=403,
-            detail="Account is locked due to high-risk security triggers. Contact SOC Admin."
+            detail=f"Account '{payload.username}' is locked due to high-risk security triggers. Contact SOC Admin or click Unlock."
         )
 
     is_password_valid = (payload.password == "SecurePassword123!")
@@ -323,6 +323,16 @@ def process_login(payload: LoginRequest, db: Session = Depends(get_db)):
         "login_log_id": login_log.id,
         "evaluation": analysis
     }
+
+@app.post("/api/users/{username}/unlock")
+def unlock_user(username: str, db: Session = Depends(get_db)):
+    """Unlocks a quarantined user account for continuous demo testing."""
+    user = db.query(User).filter(User.username == username).first()
+    if user:
+        user.is_locked = False
+        db.commit()
+        return {"status": "success", "message": f"User '{username}' unlocked successfully."}
+    raise HTTPException(status_code=404, detail="User not found")
 
 @app.get("/api/alerts")
 def get_alerts(
