@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Single Sign-On | AuthSentinel Protected Portal</title>
+    
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .login-page-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            position: relative;
+            z-index: 10;
+        }
+        .login-box {
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-highlight);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 520px;
+            padding: 2.25rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(6, 182, 212, 0.1);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 1.75rem;
+        }
+        .login-header .logo-badge {
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: #fff;
+            box-shadow: 0 0 25px var(--accent-cyan-glow);
+            margin-bottom: 0.75rem;
+        }
+        .login-header h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .login-header p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+        .telemetry-simulator-card {
+            background: #0d131f;
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .telemetry-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.6rem;
+        }
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        .input-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.35rem;
+            font-family: var(--font-mono);
+        }
+        .input-control {
+            width: 100%;
+            background: #090d16;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-control:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+        }
+        .btn-signin {
+            width: 100%;
+            background: linear-gradient(135deg, #0891b2, #2563eb);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.25);
+            margin-top: 1.25rem;
+        }
+        .btn-signin:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.35);
+        }
+        .login-alert-banner {
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1.25rem;
+            font-size: 0.82rem;
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .alert-success-box {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34d399;
+        }
+        .alert-danger-box {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #f87171;
+        }
+        .alert-warning-box {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #fbbf24;
+        }
+        .alert-detail-row {
+            margin-top: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.76rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+            padding-top: 0.5rem;
+        }
+        .nav-link-btn {
+            background: #1f293d;
+            color: #fff;
+            text-decoration: none;
+            padding: 0.45rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+        .nav-link-btn:hover {
+            border-color: var(--accent-cyan);
+            background: #25334e;
+        }
+        .footer-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 1.25rem;
+            font-family: var(--font-mono);
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+
+    <!-- Top Navigation Header -->
+    <header class="soc-header">
+        <div class="soc-brand">
+            <div class="brand-logo">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="brand-text">
+                <h1>AuthSentinel <span>SSO Portal</span></h1>
+                <p>Enterprise Zero-Trust Authentication Gateway</p>
+            </div>
+        </div>
+
+        <div class="soc-status-bar">
+            <a href="/" class="nav-link-btn">
+                <i class="fa-solid fa-gauge-high text-cyan"></i> SOC Threat Dashboard
+            </a>
+            <a href="https://github.com/itz8Mahith/Suspicious-login-detection-system" target="_blank" class="btn-github">
+                <i class="fa-brands fa-github"></i> GitHub
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Login Container -->
+    <main class="login-page-container">
+        <div class="login-box">
+            
+            <div class="login-header">
+                <div class="logo-badge">
+                    <i class="fa-solid fa-fingerprint"></i>
+                </div>
+                <h2>Corporate Identity Login</h2>
+                <p>Protected by Behavioral Anomaly & Impossible Travel Engine</p>
+            </div>
+
+            <form id="enterpriseLoginForm" onsubmit="handleLoginSubmit(event)">
+                
+                <!-- Identity Credentials -->
+                <div class="input-group">
+                    <label>
+                        <span>Username / Identity</span>
+                        <span class="text-cyan">Select or Type</span>
+                    </label>
+                    <select id="loginUsername" class="input-control" onchange="syncUserPreset(this.value)">
+                        <option value="alice_smith">alice_smith (Primary Base: New Delhi, India)</option>
+                        <option value="bob_jones">bob_jones (Primary Base: San Francisco, USA)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>
+                        <span>Password</span>
+                        <span class="text-muted">Demo: SecurePassword123!</span>
+                    </label>
+                    <input type="password" id="loginPassword" class="input-control" value="SecurePassword123!" required>
+                </div>
+
+                <!-- Simulation Telemetry Picker -->
+                <div class="telemetry-simulator-card">
+                    <div class="telemetry-title">
+                        <span><i class="fa-solid fa-satellite-dish"></i> Real-Time Telemetry Context</span>
+                        <span class="badge badge-accent">Live Engine</span>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 0.75rem;">
+                        <label>Geographic Origin Simulation</label>
+                        <select id="loginLocation" class="input-control" style="font-family: var(--font-mono); font-size: 0.78rem;">
+                            <option value="103.21.124.5">📍 New Delhi, India (103.21.124.5) - Alice's Baseline</option>
+                            <option value="198.51.100.22" selected>✈️ New York, USA (198.51.100.22) - IMPOSSIBLE TRAVEL</option>
+                            <option value="198.51.100.99">📍 San Francisco, USA (198.51.100.99) - Bob's Baseline</option>
+                            <option value="185.220.101.5">🕵️ Frankfurt, Germany (185.220.101.5) - Tor Exit Node</option>
+                            <option value="103.24.150.10">📍 Bengaluru, India (103.24.150.10) - Corporate Hub</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label>Client Device / Hardware Fingerprint</label>
+                        <select id="loginDevice" class="input-control" style="font-family: var(--font-mono); font-size: 0.78rem;">
+                            <option value="fp_alice_workstation_dell">Verified Corporate Workstation (Dell Windows 11)</option>
+                            <option value="fp_unauthorized_mac_nyc" selected>Unrecognized MacBook Pro (macOS Safari in NYC)</option>
+                            <option value="fp_tor_bundle_node">Tor Browser Bundle (Linux x86_64)</option>
+                            <option value="fp_novel_iphone15">Mobile Device (Apple iPhone 15 Pro)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-signin" id="btnSubmit">
+                    <i class="fa-solid fa-shield-halved"></i> Authenticate & Evaluate Telemetry
+                </button>
+
+            </form>
+
+            <!-- Dynamic Result Alert Box -->
+            <div id="loginResultBanner" class="login-alert-banner">
+                <div id="bannerHeader" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">
+                    <!-- Injected dynamically -->
+                </div>
+                <div id="bannerContent" style="margin-top: 0.35rem;">
+                    <!-- Injected dynamically -->
+                </div>
+                <div id="bannerDetails" class="alert-detail-row">
+                    <!-- Injected telemetry details -->
+                </div>
+                <div style="margin-top: 0.75rem; text-align: right;">
+                    <a href="/" class="nav-link-btn" style="font-size: 0.75rem; padding: 0.35rem 0.7rem;">
+                        View Threat Incident on SOC Map &rarr;
+                    </a>
+                </div>
+            </div>
+
+            <p class="footer-note">
+                <i class="fa-solid fa-lock text-cyan"></i> Real-time multi-factor risk scoring mapped to MITRE ATT&CK.
+            </p>
+
+        </div>
+    </main>
+
+    <script>
+        function syncUserPreset(username) {
+            const locSelect = document.getElementById('loginLocation');
+            const devSelect = document.getElementById('loginDevice');
+            if (username === 'alice_smith') {
+                locSelect.value = '198.51.100.22'; // Default to impossible travel test
+                devSelect.value = 'fp_unauthorized_mac_nyc';
+            } else {
+                locSelect.value = '198.51.100.99';
+                devSelect.value = 'fp_alice_workstation_dell';
+            }
+        }
+
+        async function handleLoginSubmit(event) {
+            event.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const banner = document.getElementById('loginResultBanner');
+            const header = document.getElementById('bannerHeader');
+            const content = document.getElementById('bannerContent');
+            const details = document.getElementById('bannerDetails');
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing Telemetry...`;
+            banner.style.display = 'none';
+
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const ip = document.getElementById('loginLocation').value;
+            const device = document.getElementById('loginDevice').value;
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        ip_address: ip,
+                        user_agent: device,
+                        device_fingerprint: device
+                    })
+                });
+
+                const data = await res.json();
+                const evalData = data.evaluation;
+                banner.style.display = 'block';
+
+                if (evalData.risk_score < 30 && evalData.action === 'ALLOW') {
+                    banner.className = 'login-alert-banner alert-success-box';
+                    header.innerHTML = `<i class="fa-solid fa-circle-check"></i> Authentication Granted (Low Risk)`;
+                    content.innerHTML = `Welcome, <strong>${evalData.username}</strong>. Your login aligns with your verified behavioral baseline.`;
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100</strong> | Location: ${evalData.geolocation.city}, ${evalData.geolocation.country} | Action: ALLOW`;
+                } else if (evalData.action === 'BLOCK_AND_LOCK') {
+                    banner.className = 'login-alert-banner alert-danger-box';
+                    header.innerHTML = `<i class="fa-solid fa-ban"></i> 🚨 ACCESS BLOCKED & ACCOUNT LOCKED`;
+                    content.innerHTML = `Critical threat indicators detected. The session has been terminated and the account is quarantined.`;
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [CRITICAL]</strong> | Rules Triggered: ${evalData.triggered_rules.map(r => r.name).join(', ')}`;
+                } else {
+                    banner.className = 'login-alert-banner alert-warning-box';
+                    const travel = evalData.impossible_travel_telemetry;
+                    header.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ⚠️ SUSPICIOUS LOGIN DETECTED`;
+                    
+                    if (travel) {
+                        content.innerHTML = `<strong>Impossible Travel Physics Violation:</strong> Physical jump of <strong>${travel.distance_km} km</strong> at <strong>${travel.speed_kmh} km/h</strong> (${travel.origin} &rarr; ${travel.destination}) exceeds airline speed limits!`;
+                    } else {
+                        content.innerHTML = `Suspicious login pattern detected. Secondary Multi-Factor Authentication (MFA) required.`;
+                    }
+                    
+                    details.innerHTML = `Risk Score: <strong>${evalData.risk_score}/100 [${evalData.risk_level}]</strong> | MITRE ATT&CK: ${evalData.triggered_rules[0]?.mitre?.technique_id || 'T1078'} | Action: ${evalData.action}`;
+                }
+
+            } catch (err) {
+                banner.style.display = 'block';
+                banner.className = 'login-alert-banner alert-danger-box';
+                header.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Connection Error`;
+                content.innerHTML = err.message || "Failed to reach detection gateway.";
+                details.innerHTML = "";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Authenticate & Evaluate Telemetry`;
+            }
+        }
+    </script>
+</body>
+</html>

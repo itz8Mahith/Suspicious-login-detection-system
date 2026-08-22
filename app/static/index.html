@@ -32,6 +32,9 @@
         </div>
 
         <div class="soc-status-bar">
+            <a href="/login" class="nav-link-btn" style="background: rgba(6, 182, 212, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem;">
+                <i class="fa-solid fa-key"></i> User Login Portal
+            </a>
             <div class="status-indicator">
                 <span class="pulse-dot"></span>
                 <span class="status-label">ENGINE ACTIVE</span>
@@ -39,8 +42,8 @@
             <div class="clock-display" id="utcClock">
                 <i class="fa-regular fa-clock"></i> <span id="clockTime">--:--:-- UTC</span>
             </div>
-            <a href="https://github.com" target="_blank" class="btn-github">
-                <i class="fa-brands fa-github"></i> GitHub Repo
+            <a href="https://github.com/itz8Mahith/Suspicious-login-detection-system" target="_blank" class="btn-github">
+                <i class="fa-brands fa-github"></i> GitHub
             </a>
         </div>
     </header>
@@ -170,39 +173,15 @@
                         </button>
                     </div>
 
-                    <!-- Live Custom Request Tester Accordion -->
-                    <div class="custom-tester-section">
-                        <details>
-                            <summary><i class="fa-solid fa-sliders"></i> Test Custom Login Payload</summary>
-                            <form id="customLoginForm" onsubmit="handleCustomLogin(event)">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Username</label>
-                                        <select id="customUser" class="form-control">
-                                            <option value="alice_smith">alice_smith (India Base)</option>
-                                            <option value="bob_jones">bob_jones (USA Base)</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Password</label>
-                                        <input type="password" id="customPass" class="form-control" value="SecurePassword123!">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>IP Address</label>
-                                        <input type="text" id="customIP" class="form-control" value="198.51.100.22" placeholder="e.g. 198.51.100.22 (New York)">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>User-Agent</label>
-                                        <input type="text" id="customUA" class="form-control" value="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15">
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn-submit-test">
-                                    <i class="fa-solid fa-play"></i> Evaluate Telemetry
-                                </button>
-                            </form>
-                        </details>
+                    <!-- Link to Dedicated User Portal -->
+                    <div style="background: #0d131f; border: 1px solid var(--border-highlight); border-radius: 8px; padding: 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <strong style="font-size: 0.82rem; color: #fff;"><i class="fa-solid fa-key text-cyan"></i> Real User Login Page</strong>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Test interactive user login portal with live threat detection</p>
+                        </div>
+                        <a href="/login" class="nav-link-btn" style="font-size: 0.78rem; padding: 0.35rem 0.75rem; background: var(--accent-cyan); color: #000; font-weight: 700; border: none; text-decoration: none; border-radius: 6px;">
+                            Go to /login &rarr;
+                        </a>
                     </div>
                 </div>
             </div>
@@ -297,7 +276,7 @@
             </div>
         </section>
 
-        <!-- Detection Architecture & MITRE ATT&CK Reference Modal / Section -->
+        <!-- Threat Model Reference Card -->
         <section class="card mitre-reference-card">
             <div class="card-header">
                 <div class="card-title">
@@ -353,7 +332,7 @@
     </div>
 
     <!-- Dependencies: Leaflet.js & Chart.js -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Custom Dashboard Script -->

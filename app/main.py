@@ -177,6 +177,7 @@ if STATIC_DIR.exists():
 # ----------------- UI / Root Endpoints (Compatible with all Vercel routes) -----------------
 
 @app.get("/")
+@app.get("/dashboard")
 @app.get("/api")
 @app.get("/api/")
 @app.get("/api/index.py")
@@ -187,6 +188,16 @@ def serve_ui():
         content = index_file.read_text(encoding="utf-8")
         return HTMLResponse(content=content)
     return {"message": "AuthSentinel API Active", "docs": "/docs"}
+
+@app.get("/login")
+@app.get("/login.html")
+def serve_login_portal():
+    """Serves the Enterprise User Login Portal."""
+    login_file = STATIC_DIR / "login.html"
+    if login_file.exists():
+        content = login_file.read_text(encoding="utf-8")
+        return HTMLResponse(content=content)
+    return {"message": "Login Portal", "status": "active"}
 
 @app.get("/static/css/style.css")
 def serve_css():
