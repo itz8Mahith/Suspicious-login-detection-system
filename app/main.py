@@ -10,9 +10,9 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, Depends, HTTPException, Query, Body
+from fastapi import FastAPI, Depends, HTTPException, Query, Body, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -170,19 +170,37 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Mount static files safely with absolute path
+# Mount static files
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ----------------- UI / Root Endpoint -----------------
+# ----------------- UI / Root Endpoints (Compatible with all Vercel routes) -----------------
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
+@app.get("/api/index.py")
 def serve_ui():
     """Serves the interactive Cyber Threat Intelligence Dashboard."""
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        content = index_file.read_text(encoding="utf-8")
+        return HTMLResponse(content=content)
     return {"message": "AuthSentinel API Active", "docs": "/docs"}
+
+@app.get("/static/css/style.css")
+def serve_css():
+    css_file = STATIC_DIR / "css" / "style.css"
+    if css_file.exists():
+        return Response(content=css_file.read_text(encoding="utf-8"), media_type="text/css")
+    return Response(content="", media_type="text/css")
+
+@app.get("/static/js/dashboard.js")
+def serve_js():
+    js_file = STATIC_DIR / "js" / "dashboard.js"
+    if js_file.exists():
+        return Response(content=js_file.read_text(encoding="utf-8"), media_type="application/javascript")
+    return Response(content="", media_type="application/javascript")
 
 # ----------------- API Endpoints -----------------
 
