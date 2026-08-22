@@ -561,16 +561,25 @@ def trigger_scenario(payload: ScenarioSimulationRequest, db: Session = Depends(g
     elif payload.scenario == "brute_force":
         base_time = now - timedelta(minutes=2)
         for i in range(1, 6):
-            req = LoginRequest(
-                username=target,
-                password=f"WrongPassword{i}!",
-                ip_address="198.51.100.99",
-                user_agent="Python-Requests/2.31.0 (Automated Tool)",
-                device_fingerprint="fp_attacker_bot",
-                timestamp=base_time + timedelta(seconds=i * 5)
-            )
-            res = process_login(req, db)
-            results.append({"attempt": i, "result": res})
+            try:
+                req = LoginRequest(
+                    username=target,
+                    password=f"WrongPassword{i}!",
+                    ip_address="198.51.100.99",
+                    user_agent="Python-Requests/2.31.0 (Automated Tool)",
+                    device_fingerprint="fp_attacker_bot",
+                    timestamp=base_time + timedelta(seconds=i * 5)
+                )
+                res = process_login(req, db)
+                results.append({"attempt": i, "result": res})
+            except HTTPException as e:
+                results.append({
+                    "attempt": i,
+                    "status_code": e.status_code,
+                    "detail": e.detail,
+                    "is_blocked": True,
+                    "action": "BLOCK_AND_LOCK"
+                })
 
     elif payload.scenario == "tor_proxy":
         req = LoginRequest(
