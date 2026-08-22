@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuthSentinel | Suspicious Login & Anomaly Detection System</title>
+    
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Leaflet.js CSS for World Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom Cyber Dark Theme CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-dark text-light">
+
+    <!-- Top Navigation / SOC Header -->
+    <header class="soc-header">
+        <div class="soc-brand">
+            <div class="brand-logo">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="brand-text">
+                <h1>AuthSentinel <span>v1.0</span></h1>
+                <p>Real-Time Behavioral & Impossible Travel Detection Engine</p>
+            </div>
+        </div>
+
+        <div class="soc-status-bar">
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span class="status-label">ENGINE ACTIVE</span>
+            </div>
+            <div class="clock-display" id="utcClock">
+                <i class="fa-regular fa-clock"></i> <span id="clockTime">--:--:-- UTC</span>
+            </div>
+            <a href="https://github.com" target="_blank" class="btn-github">
+                <i class="fa-brands fa-github"></i> GitHub Repo
+            </a>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <!-- Summary KPI Row -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon icon-blue">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-label">TOTAL LOGINS</span>
+                    <h3 id="statTotalLogins">0</h3>
+                    <span class="kpi-trend text-blue"><i class="fa-solid fa-arrow-trend-up"></i> Live Tracking</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon icon-red">
+                    <i class="fa-solid fa-ban"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-label">BLOCKED ATTACKS</span>
+                    <h3 id="statBlockedLogins">0</h3>
+                    <span class="kpi-trend text-red"><i class="fa-solid fa-shield-virus"></i> Auto-Mitigated</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon icon-orange">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-label">HIGH / CRITICAL ALERTS</span>
+                    <h3 id="statHighAlerts">0</h3>
+                    <span class="kpi-trend text-orange"><i class="fa-solid fa-bell"></i> Requires Review</span>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon icon-green">
+                    <i class="fa-solid fa-plane-slash"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-label">IMPOSSIBLE TRAVELS</span>
+                    <h3 id="statTravelAlerts">0</h3>
+                    <span class="kpi-trend text-green"><i class="fa-solid fa-globe"></i> >900 km/h Violations</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid (Map & Simulator Controls) -->
+        <section class="workspace-grid">
+            
+            <!-- Left: Geospatial Threat Intelligence Map -->
+            <div class="card map-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-earth-americas text-cyan"></i>
+                        <span>Geospatial Velocity & Impossible Travel Vector Map</span>
+                    </div>
+                    <div class="map-legend">
+                        <span class="legend-item"><span class="dot dot-green"></span> Baseline (Origin)</span>
+                        <span class="legend-item"><span class="dot dot-red"></span> Anomaly (Destination)</span>
+                        <span class="legend-item"><span class="line-vector"></span> Supersonic Vector</span>
+                    </div>
+                </div>
+                <div class="card-body map-body">
+                    <div id="threatMap"></div>
+                </div>
+            </div>
+
+            <!-- Right: One-Click Attack Scenarios & Interactive Tester -->
+            <div class="card simulator-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-bolt-lightning text-yellow"></i>
+                        <span>Live Attack Scenario Simulator</span>
+                    </div>
+                    <span class="badge badge-accent">Interactive Demo</span>
+                </div>
+
+                <div class="card-body">
+                    <p class="section-desc">Trigger real-world attack vectors to observe instant risk scoring and mitigation:</p>
+                    
+                    <div class="scenario-buttons-grid">
+                        <button class="btn-scenario btn-impossible-travel" onclick="runScenario('impossible_travel')">
+                            <div class="btn-scenario-header">
+                                <i class="fa-solid fa-plane-departure"></i>
+                                <strong>Impossible Travel</strong>
+                            </div>
+                            <span>India (10:00 AM) &rarr; USA (10:05 AM)</span>
+                        </button>
+
+                        <button class="btn-scenario btn-brute-force" onclick="runScenario('brute_force')">
+                            <div class="btn-scenario-header">
+                                <i class="fa-solid fa-keyboard"></i>
+                                <strong>Brute Force Burst</strong>
+                            </div>
+                            <span>5 Rapid Failed Attempts in 25s</span>
+                        </button>
+
+                        <button class="btn-scenario btn-tor" onclick="runScenario('tor_proxy')">
+                            <div class="btn-scenario-header">
+                                <i class="fa-solid fa-mask"></i>
+                                <strong>Tor / High-Risk Proxy</strong>
+                            </div>
+                            <span>Frankfurt Tor Node + Foreign Device</span>
+                        </button>
+
+                        <button class="btn-scenario btn-midnight" onclick="runScenario('midnight_access')">
+                            <div class="btn-scenario-header">
+                                <i class="fa-solid fa-moon"></i>
+                                <strong>Off-Hours Access</strong>
+                            </div>
+                            <span>3:30 AM Login with Novel Mobile</span>
+                        </button>
+
+                        <button class="btn-scenario btn-benign" onclick="runScenario('benign_login')">
+                            <div class="btn-scenario-header">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <strong>Benign Routine Login</strong>
+                            </div>
+                            <span>Verified Corporate Device & IP</span>
+                        </button>
+                    </div>
+
+                    <!-- Live Custom Request Tester Accordion -->
+                    <div class="custom-tester-section">
+                        <details>
+                            <summary><i class="fa-solid fa-sliders"></i> Test Custom Login Payload</summary>
+                            <form id="customLoginForm" onsubmit="handleCustomLogin(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Username</label>
+                                        <select id="customUser" class="form-control">
+                                            <option value="alice_smith">alice_smith (India Base)</option>
+                                            <option value="bob_jones">bob_jones (USA Base)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Password</label>
+                                        <input type="password" id="customPass" class="form-control" value="SecurePassword123!">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>IP Address</label>
+                                        <input type="text" id="customIP" class="form-control" value="198.51.100.22" placeholder="e.g. 198.51.100.22 (New York)">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>User-Agent</label>
+                                        <input type="text" id="customUA" class="form-control" value="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605.1.15">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn-submit-test">
+                                    <i class="fa-solid fa-play"></i> Evaluate Telemetry
+                                </button>
+                            </form>
+                        </details>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Incident Stream & MITRE ATT&CK Mapping -->
+        <section class="incidents-section">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-shield-virus text-red"></i>
+                        <span>Security Incidents & Forensic Evidence Log</span>
+                    </div>
+                    <div class="filter-controls">
+                        <button class="filter-btn active" onclick="filterAlerts('ALL')">All</button>
+                        <button class="filter-btn btn-sev-critical" onclick="filterAlerts('CRITICAL')">Critical</button>
+                        <button class="filter-btn btn-sev-high" onclick="filterAlerts('HIGH')">High</button>
+                        <button class="filter-btn btn-sev-medium" onclick="filterAlerts('MEDIUM')">Medium</button>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="soc-table" id="alertsTable">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Severity</th>
+                                    <th>Target User</th>
+                                    <th>Anomaly Detection</th>
+                                    <th>MITRE ATT&CK</th>
+                                    <th>Forensic Evidence</th>
+                                    <th>Action Enforced</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-spinner fa-spin"></i> Loading security telemetry...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Threat Distribution & Audit Logs Row -->
+        <section class="analytics-row">
+            
+            <!-- Threat Distribution Chart -->
+            <div class="card analytics-chart-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-chart-pie text-cyan"></i>
+                        <span>Anomaly Type Distribution</span>
+                    </div>
+                </div>
+                <div class="card-body chart-body">
+                    <canvas id="threatPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Login Logs Audit Trail -->
+            <div class="card audit-trail-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-list-check text-green"></i>
+                        <span>Recent Login Audit Trail</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive audit-table-wrapper">
+                        <table class="soc-table" id="logsTable">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Location</th>
+                                    <th>IP Address</th>
+                                    <th>Risk Score</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detection Architecture & MITRE ATT&CK Reference Modal / Section -->
+        <section class="card mitre-reference-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-diagram-project text-purple"></i>
+                    <span>Cyber Defense Threat Model & Detection Physics</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mitre-grid">
+                    <div class="mitre-item">
+                        <div class="mitre-tag">T1078.004</div>
+                        <h4>Impossible Travel Velocity</h4>
+                        <p>Calculates Great-Circle Haversine distance \(d\) and speed \(v = d/\Delta t\). Flaggers triggers when \(v > 900\text{ km/h}\).</p>
+                    </div>
+                    <div class="mitre-item">
+                        <div class="mitre-tag">T1110.001</div>
+                        <h4>Password Guessing / Brute Force</h4>
+                        <p>Sliding-window velocity tracking detects burst threshold failures within 5-minute epochs and initiates automated lockouts.</p>
+                    </div>
+                    <div class="mitre-item">
+                        <div class="mitre-tag">T1078</div>
+                        <h4>Client Fingerprint Mismatch</h4>
+                        <p>Evaluates OS, Browser canvas, and User-Agent entropy against user's historical profile.</p>
+                    </div>
+                    <div class="mitre-item">
+                        <div class="mitre-tag">T1090.003</div>
+                        <h4>Tor / Anonymizing Proxy Access</h4>
+                        <p>Cross-references source ASN and IP metadata against verified threat intelligence feeds and Tor exit directories.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Alert Modal for Live Execution Results -->
+    <div id="resultModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-shield-halved text-cyan"></i>
+                    <span id="modalScenarioTitle">Scenario Evaluation Result</span>
+                </div>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalResultContent">
+                <!-- Injected via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-close" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencies: Leaflet.js & Chart.js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom Dashboard Script -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
